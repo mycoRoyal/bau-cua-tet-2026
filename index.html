@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bầu Cua Tết 2026 - Xuân Phát Tài</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            /* Gradient nền đỏ tết rực rỡ */
+            background: radial-gradient(circle, #b21f1f, #8b0000, #4a0000);
+            margin: 0; padding: 0; height: 100vh; height: -webkit-fill-available;
+            overflow: hidden; font-family: sans-serif;
+            position: relative;
+        }
+
+        /* Thêm các biểu tượng trang trí Tết */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            /* Hoa đào góc trên trái, Hoa mai góc trên phải, Bánh chưng góc dưới */
+            background-image: 
+                url('./dao.png'), 
+                url('./mai.png'),
+                url('./banhchung.png');
+            background-position: top -10px left -35px, top -20px right -35px, bottom 10px right 10px;
+            background-repeat: no-repeat;
+            background-size: 150px, 150px, 200px;
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Thêm hiệu ứng đèn lồng treo */
+        .lantern {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #app {
+            height: 100%; display: flex; flex-direction: column;
+            justify-content: space-between; padding: env(safe-area-inset-top) 1rem env(safe-area-inset-bottom) 1rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .game-card { 
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); 
+            border: 2px solid #ffd700; /* Viền vàng gold */
+            background: white;
+            transition: all 0.3s ease;
+        }
+        
+        .card-win {
+            border-color: #ff0000 !important;
+            box-shadow: 0 0 25px #ffd700, inset 0 0 10px #ffd700;
+            transform: scale(1.1);
+            background-color: #fffde7 !important;
+            animation: win-bounce 0.6s infinite alternate;
+        }
+
+        /* Sửa lại class bowl-area để nó mặc định là úp xuống */
+        .bowl-area img {
+            width: 224px; /* w-56 */
+            height: 224px;
+            transform: rotateX(0deg); /* Đây là lệnh quan trọng nhất */
+            transition: all 0.5s ease;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.6));
+        }
+
+        /* Khi mở bát (is-open), chúng ta lật nó lại hoặc nhấc nó đi */
+        .is-open {
+            transform: translateX(350px) translateY(-30px) rotate(40deg) rotateX(0deg) !important;
+            opacity: 0;
+        }
+
+        @keyframes win-bounce { from { transform: scale(1.1); } to { transform: scale(1.15); } }
+
+        .bowl-area { position: absolute; transition: all 0.9s cubic-bezier(0.5, -0.01, 0, 1.05); z-index: 20; }
+        .is-open { transform: translateX(350px) translateY(-30px) rotate(40deg); opacity: 0; pointer-events: none; }
+        .shaking { animation: shake 0.1s infinite; }
+        @keyframes shake { 0% { transform: translate(3px, 2px); } 50% { transform: translate(-3px, -2px); } 100% { transform: translate(3px, 2px); } }
+        
+        .dice-jump { animation: jump-limited 0.4s ease-in-out; animation-iteration-count: 5; }
+        @keyframes jump-limited { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        footer {
+            margin-top: 60px;
+            /* padding: 50px; */
+        }
+
+        header {
+            margin-top: 20px;
+        }
+
+        .rotating-border-container {
+            position: absolute;
+            width: 105%;
+            height: 105%;
+            border-radius: 50%;
+            padding: 3px; 
+            
+            /* Nối liền mạch: Vàng đậm (0%) -> Vàng nhạt/mờ (50%) -> Vàng đậm (100%)
+            Cách này giúp vòng tròn luôn kín nhưng vẫn có hiệu ứng ánh sáng chạy
+            */
+            background: conic-gradient(
+                from 0deg,
+                #ffd700 0%,      /* Điểm bắt đầu rực rỡ */
+                #ffec8b 25%,     /* Sáng nhẹ */
+                rgba(255, 215, 0, 0.1) 50%, /* Mờ nhất (tạo khoảng uyển chuyển) */
+                #ffec8b 75%,     /* Sáng lại dần */
+                #ffd700 100%     /* Kết nối hoàn hảo với điểm 0% */
+            );
+            
+            animation: rotate-border 4s linear infinite; /* Tốc độ vừa phải để nhìn thấy độ mượt */
+            
+            /* Giữ nguyên kỹ thuật đục rỗng */
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            
+            pointer-events: none;
+            z-index: 1;
+            /* Thêm một chút đổ bóng nhẹ để đường line trông nổi khối */
+            filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.5));
+        }
+
+        @keyframes rotate-border {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes rotate-border {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes rotate-border {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .main-content {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body @click="initAudioOnce">
+    <div class="lantern">
+        <!-- <img src="https://img.icons8.com/color/48/chinese-lantern.png"> -->
+        <!-- <img src="https://img.icons8.com/color/48/chinese-lantern.png"> -->
+    </div>
+
+    <div id="app">
+        <audio ref="bgMusic" src="./nhac_nen_tet.mp3" loop></audio>
+        <audio ref="audioShake" src="./rung.mp3"></audio>
+        <audio ref="audioWin" src="https://www.myinstants.com/media/sounds/victory-mario-series-hq.mp3"></audio>
+        <audio ref="audioOpenBowl" src="./can-down-1.mp3"></audio>
+        <audio ref="audioCloseBowl" src="./can-down-1.mp3"></audio>
+
+        <div class="absolute left-4 z-50" style="top: 350px">
+            <button @click.stop="resetGame" 
+                :class="{ 'opacity-20 pointer-events-none': isShaking }"
+                class="bg-black/50 p-2 rounded-full border-2 border-yellow-400 shadow-lg text-base flex items-center justify-center transition-transform active:scale-90" 
+                style="width: 40px; height: 40px;">
+                <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style="color:white">
+                    <path fill-rule="evenodd" d="M11.293 3.293a1 1 0 0 1 1.414 0l6 6 2 2a1 1 0 0 1-1.414 1.414L19 12.414V19a2 2 0 0 1-2 2h-3a1 1 0 0 1-1-1v-3h-2v3a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2v-6.586l-.293.293a1 1 0 0 1-1.414-1.414l2-2 6-6Z" clip-rule="evenodd"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="absolute right-4 z-50" style="top: 350px">
+            <button @click.stop="toggleMute" 
+                :class="{ 'opacity-20 pointer-events-none': isShaking }"
+                class="bg-black/50 p-2 rounded-full border-2 border-yellow-400 shadow-lg text-base flex items-center justify-center transition-transform active:scale-90" 
+                style="width: 40px; height: 40px;">
+
+                <svg v-if="!isMuted" class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style="color:white">
+                    <path d="M13 6.037c0-1.724-1.978-2.665-3.28-1.562L5.638 7.933H4c-1.105 0-2 .91-2 2.034v4.066c0 1.123.895 2.034 2 2.034h1.638l4.082 3.458c1.302 1.104 3.28.162 3.28-1.562V6.037Z"/>
+                    <path fill-rule="evenodd" d="M14.786 7.658a.988.988 0 0 1 1.414-.014A6.135 6.135 0 0 1 18 12c0 1.662-.655 3.17-1.715 4.27a.989.989 0 0 1-1.414.014 1.029 1.029 0 0 1-.014-1.437A4.085 4.085 0 0 0 16 12a4.085 4.085 0 0 0-1.2-2.904 1.029 1.029 0 0 1-.014-1.438Z" clip-rule="evenodd"/>
+                    <path fill-rule="evenodd" d="M17.657 4.811a.988.988 0 0 1 1.414 0A10.224 10.224 0 0 1 22 12c0 2.807-1.12 5.35-2.929 7.189a.988.988 0 0 1-1.414 0 1.029 1.029 0 0 1 0-1.438A8.173 8.173 0 0 0 20 12a8.173 8.173 0 0 0-2.343-5.751 1.029 1.029 0 0 1 0-1.438Z" clip-rule="evenodd"/>
+                </svg>
+
+                <svg v-else class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style="color:white">
+                    <path d="M5.707 4.293a1 1 0 0 0-1.414 1.414l14 14a1 1 0 0 0 1.414-1.414l-.004-.005C21.57 16.498 22 13.938 22 12a9.972 9.972 0 0 0-2.929-7.071 1 1 0 1 0-1.414 1.414A7.972 7.972 0 0 1 20 12c0 1.752-.403 3.636-1.712 4.873l-1.433-1.433C17.616 14.37 18 13.107 18 12c0-1.678-.69-3.197-1.8-4.285a1 1 0 1 0-1.4 1.428A3.985 3.985 0 0 1 16 12c0 .606-.195 1.335-.59 1.996L13 11.586V6.135c0-1.696-1.978-2.622-3.28-1.536L7.698 6.284l-1.99-1.991ZM4 8h.586L13 16.414v1.451c0 1.696-1.978 2.622-3.28 1.536L5.638 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z"/>
+                </svg>
+            </button>
+        </div>
+
+        <header class="pt-2 flex flex-col items-center">
+            <div class="h-14 flex items-center justify-center gap-2 bg-yellow-600/30 rounded-full px-4 border border-yellow-400/50 mb-2 backdrop-blur-sm">
+                <div v-if="history.length > 0" class="flex gap-4">
+                    <img v-for="(h, index) in history" :key="index" :src="getImgUrl(h)" class="h-8 object-contain rounded">
+                </div>
+                <div v-else class="text-yellow-400 text-[15px] italic">HAPPY NEW YEAR</div>
+            </div>
+            <h1 class="text-2xl md:text-4xl font-black text-yellow-400 italic tracking-tighter drop-shadow-lg uppercase" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5)">BẦU CUA TẾT 2026</h1>
+        </header>
+
+        <main class="main-content flex flex-col items-center justify-center gap-8">
+            <div class="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center bg-yellow-500/10 rounded-full border-4 border-yellow-500/30 shadow-2xl overflow-visible backdrop-blur-sm">
+                <div class="rotating-border-container"></div>
+                <div class="grid grid-cols-2 gap-2 p-4 z-0" v-if="isOpen">
+                    <div v-for="(res, i) in results" :key="i" 
+                         :class="['w-16 h-16 bg-white rounded-xl p-2 shadow-lg dice-jump flex items-center justify-center', i === 2 ? 'col-span-2 mx-auto' : '']"
+                         :style="{ animationDelay: (i * 0.1) + 's' }">
+                        <img :src="getImgUrl(res)" class="w-full h-full object-contain">
+                    </div>
+                </div>
+                <div class="bowl-area flex items-center justify-center" :class="{ 'is-open': isOpen, 'shaking': isShaking }">
+                    <img src="https://img.icons8.com/dotty/256/empty-dog-bowl.png" class="w-56 h-56 md:w-64 md:h-64 drop-shadow-2xl">
+                    <!-- <img width="80" height="80" src="https://img.icons8.com/dotty/80/empty-dog-bowl.png" alt="empty-dog-bowl"/> -->
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 md:gap-4 relative">
+                <div v-for="item in items" :key="item.id" 
+                     class="game-card p-2 rounded-xl w-20 h-20 md:w-24 md:h-24 flex flex-col items-center justify-center"
+                     :class="{ 'card-win': isOpen && results.includes(item.name) }">
+                    <img :src="getImgUrl(item.name)" class="w-14 h-14 md:w-16 md:h-16 object-contain">
+                </div>
+            </div>
+        </main>
+
+        <footer class="flex justify-center w-full">
+            <button v-if="gameState === 'ready'" @click="handleShake" class="w-64 py-4 bg-gradient-to-b from-yellow-400 to-yellow-600 text-red-800 rounded-2xl font-bold text-2xl uppercase shadow-[0_4px_0_rgb(161,98,7)] active:translate-y-1 active:shadow-none transition-all">Xốc</button>
+            <button v-if="gameState === 'shaked'" @click="handleOpen" class="w-64 py-4 bg-gradient-to-b from-orange-400 to-orange-600 text-white rounded-2xl font-bold text-2xl uppercase shadow-[0_4px_0_rgb(154,52,18)] active:translate-y-1 active:shadow-none transition-all border-2 border-white/20">Mở</button>
+            <button v-if="gameState === 'opened'" @click="resetGame" class="w-64 py-4 bg-gradient-to-b from-green-500 to-green-700 text-white rounded-2xl font-bold text-2xl uppercase shadow-[0_4px_0_rgb(21,94,33)] active:translate-y-1 active:shadow-none transition-all">Ván mới</button>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+        createApp({
+            setup() {
+                // ĐƯA DANH SÁCH ITEMS LÊN ĐẦU ĐỂ CÁC HÀM KHÁC SỬ DỤNG ĐƯỢC
+                const itemsList = [
+                    {id:1, name:'nai'}, {id:2, name:'bau'}, {id:3, name:'ga'},
+                    {id:4, name:'ca'},  {id:5, name:'cua'}, {id:6, name:'tom'}
+                ];
+
+                const gameState = ref('ready');
+                const isShaking = ref(false);
+                const isOpen = ref(false);
+                
+                // Khởi tạo results mặc định để ván đầu tiên không bị lỗi tính toán
+                const results = ref(['bau', 'cua', 'tom']); 
+                
+                const history = ref([]);
+                const isMuted = ref(false);
+                const isAudioInitialized = ref(false);
+                const bgMusic = ref(null), audioShake = ref(null), audioWin = ref(null);
+                const audioOpenBowl = ref(null), audioCloseBowl = ref(null);
+                let fireworkInterval = null;
+
+                const initAudioOnce = () => {
+                    if (!isAudioInitialized.value && bgMusic.value) {
+                        bgMusic.value.volume = 0.4;
+                        // CHỈ PHÁT nếu người dùng chưa nhấn Mute
+                        if (!isMuted.value) {
+                            bgMusic.value.play().catch(() => {});
+                        }
+                        isAudioInitialized.value = true;
+                    }
+                };
+
+                const toggleMute = () => {
+                    isMuted.value = !isMuted.value;
+                    
+                    if (bgMusic.value) {
+                        if (isMuted.value) {
+                            bgMusic.value.pause();
+                        } else {
+                            // Nếu bật loa lại, phải đảm bảo audio đã được init
+                            isAudioInitialized.value = true; 
+                            bgMusic.value.play().catch(() => {});
+                        }
+                    }
+
+                    // Cập nhật âm lượng cho các hiệu ứng khác
+                    const vol = isMuted.value ? 0 : 1;
+                    [audioShake, audioWin, audioOpenBowl, audioCloseBowl].forEach(a => { 
+                        if(a.value) a.value.volume = vol; 
+                    });
+                };
+
+                const handleShake = () => {
+
+                    // Nếu chưa init thì mới gọi, và chỉ gọi khi không bị Mute
+                    if (!isAudioInitialized.value) {
+                        initAudioOnce();
+                    }
+                    
+                    // Phát tiếng xóc (chỉ khi không mute)
+                    if(!isMuted.value && audioShake.value) { 
+                        audioShake.value.currentTime = 0; 
+                        audioShake.value.play(); 
+                    }
+
+                    // initAudioOnce();
+                    if(!isMuted.value) { 
+                        audioShake.value.currentTime = 0; 
+                        audioShake.value.play(); 
+                    }
+                    
+                    isOpen.value = false;
+                    isShaking.value = true;
+                    clearInterval(fireworkInterval);
+
+                    setTimeout(() => {
+                        isShaking.value = false;
+
+                        // LOGIC TÍNH TOÁN QUY LUẬT
+                        // Tính tổng dựa trên kết quả ván vừa mở (results.value hiện tại)
+                        let sum = results.value.reduce((acc, name) => {
+                            const found = itemsList.find(i => i.name === name);
+                            return acc + (found ? found.id : 0);
+                        }, 0);
+
+                        let targetVal = sum + 1;
+                        if (targetVal > 12) targetVal -= 12;
+                        else if (targetVal > 6) targetVal -= 6;
+
+                        // Tìm linh vật "biết trước"
+                        const mustHave = itemsList.find(i => i.id === targetVal).name;
+                        
+                        // Tạo 2 linh vật ngẫu nhiên còn lại
+                        const random1 = itemsList[Math.floor(Math.random() * 6)].name;
+                        const random2 = itemsList[Math.floor(Math.random() * 6)].name;
+                    
+                        // Đưa vào mảng và trộn ngẫu nhiên vị trí
+                        let tempResults = [random1, random2, mustHave];
+                        results.value = tempResults.sort(() => Math.random() - 0.5);
+
+                        gameState.value = 'shaked';
+                        // console.log("Quy luật ván tới:", mustHave); 
+                        // // Kiểm tra bí mật trong Console
+                    }, 1200);
+                };
+
+                const handleOpen = () => {
+                    if(!isMuted.value) { 
+                        audioOpenBowl.value.currentTime = 0; 
+                        audioOpenBowl.value.play(); 
+                    }
+
+                    isOpen.value = true;
+                    gameState.value = 'opened';
+                    history.value = [...results.value];
+
+                    // BẮN PHÁO HOA 5 LẦN
+                    let count = 0;
+                    const maxShots = 5;
+
+                    // Phát súng đầu tiên ngay lập tức
+                    confetti({ 
+                        particleCount: 150, spread: 70, origin: { y: 0.6 }, 
+                        colors: ['#ffd700', '#ff0000', '#ffffff'] 
+                    });
+                    count++;
+
+                    // Thiết lập lặp lại cho 4 lần còn lại
+                    fireworkInterval = setInterval(() => {
+                        if (count < maxShots) {
+                            // Bắn từ bên trái
+                            confetti({ 
+                                particleCount: 80, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, 
+                                colors: ['#ffd700', '#ff0000'] 
+                            });
+                            // Bắn từ bên phải
+                            confetti({ 
+                                particleCount: 80, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, 
+                                colors: ['#ffd700', '#ff0000'] 
+                            });
+                            count++;
+                        } else {
+                            // Đã đủ 5 lần thì dừng hẳn
+                            clearInterval(fireworkInterval);
+                        }
+                    }, 1000); // Mỗi lần cách nhau 1 giây
+                };
+
+                const resetGame = () => {
+                    if(!isMuted.value) { audioCloseBowl.value.currentTime = 0; audioCloseBowl.value.play(); }
+                    clearInterval(fireworkInterval);
+                    isOpen.value = false;
+                    gameState.value = 'ready';
+                };
+
+                // Theo dõi trạng thái ẩn/hiện của trình duyệt
+                document.addEventListener("visibilitychange", () => {
+                    if (document.hidden) {
+                        // Nếu người dùng chuyển ứng dụng hoặc ẩn trình duyệt
+                        if (bgMusic.value) bgMusic.value.pause();
+                    } else {
+                        // Nếu người dùng quay lại ứng dụng và không bị Mute
+                        if (!isMuted.value && isAudioInitialized.value && bgMusic.value) {
+                            bgMusic.value.play().catch(() => {
+                                // console.log("Cần tương tác để phát lại nhạc");
+                            });
+                        }
+                    }
+                });
+                
+                return { 
+                    gameState, isShaking, isOpen, results, history, isMuted,
+                    bgMusic, audioShake, audioWin, audioOpenBowl, audioCloseBowl,
+                    toggleMute, initAudioOnce, handleShake, handleOpen, resetGame,
+                    items: itemsList, // Trả về itemsList cho HTML sử dụng
+                    getImgUrl: (n) => `./${n}.png`
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
