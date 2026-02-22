@@ -155,6 +155,72 @@
         .main-content {
             margin-top: 10px;
         }
+
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, #b21f1f, #4a0000);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-logo {
+            width: 100px;
+            height: 100px;
+            display: block;      /* Chuyển sang block để dùng được margin auto */
+            margin: 0 auto 30px; /* 0 auto giúp căn giữa trái/phải, 30px là khoảng cách dưới */
+            filter: drop-shadow(0 0 10px #ffd700);
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        /* Đảm bảo container cũng căn giữa nội dung bên trong */
+        .loading-container {
+            width: 80%;
+            max-width: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Căn giữa tất cả các phần tử con theo chiều ngang */
+            text-align: center;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 214, 0, 0.3);
+        }
+
+        #progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ff8c00);
+            box-shadow: 0 0 10px #ffd700;
+            transition: width 0.2s ease-out;
+        }
+
+        #progress-text {
+            color: #ffd700;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 1.2rem;
+        }
+
+        .loading-status {
+            color: rgba(255, 214, 0, 0.7);
+            font-size: 0.9rem;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
     </style>
 </head>
 <body @click="initAudioOnce">
@@ -432,6 +498,45 @@
                 .catch(err => console.log('SW Error', err));
             });
         }
+
+        window.addEventListener('load', () => {
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            const loader = document.getElementById('loading-screen');
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                // Tăng phần trăm ngẫu nhiên cho tự nhiên
+                progress += Math.floor(Math.random() * 15) + 5;
+                
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    
+                    // Đợi một chút sau khi 100% rồi mới ẩn
+                    setTimeout(() => {
+                        loader.style.opacity = '0';
+                        setTimeout(() => loader.remove(), 500);
+                    }, 300);
+                }
+                
+                progressFill.style.width = progress + '%';
+                progressText.innerText = progress + '%';
+            }, 200); // Tốc độ chạy (150ms mỗi bước tăng)
+        });
     </script>
+    
 </body>
+<div id="loading-screen">
+    <div class="loading-container">
+        <img src="./logo_app.png" class="loading-logo">
+        
+        <div class="progress-bar-bg">
+            <div id="progress-fill"></div>
+        </div>
+        
+        <div id="progress-text">0%</div>
+        <p class="loading-status">Đang tải Xuân Phát Tài...</p>
+    </div>
+</div>
 </html>
