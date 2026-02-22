@@ -1,0 +1,21 @@
+{
+  "short_name": "Bầu Cua 2026",
+  "name": "Bầu Cua Tết 2026 - Xuân Phát Tài",
+  "icons": [
+    {
+      "src": "./bau.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./bau.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#8b0000",
+  "theme_color": "#ffd700",
+  "display": "standalone",
+  "orientation": "portrait"
+}
